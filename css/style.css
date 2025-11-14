@@ -135,6 +135,29 @@ body {
     color: #6c757d;
 }
 
+.file-language {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+    margin-right: 16px;
+}
+
+.file-language .badge {
+    font-size: 0.875rem;
+    font-weight: 500;
+    padding: 6px 12px;
+}
+
+.file-language input {
+    font-size: 0.875rem;
+    border-radius: 6px;
+    transition: var(--transition);
+}
+
+.file-language input:focus {
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
 .file-actions {
     display: flex;
     gap: 8px;
