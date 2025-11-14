@@ -25,6 +25,34 @@
         <!-- Main Content -->
         <div class="row justify-content-center">
             <div class="col-lg-10">
+                <!-- API Key & Folder Selection -->
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-body p-4">
+                        <!-- API Key Input -->
+                        <div class="mb-3">
+                            <label for="apiKey" class="form-label fw-bold">
+                                <i class="bi bi-key"></i> API Key
+                            </label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="apiKey" placeholder="API Key를 입력하세요">
+                                <button class="btn btn-primary" type="button" id="fetchFoldersBtn">
+                                    <i class="bi bi-folder-fill"></i> 폴더 조회
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Folder Selection -->
+                        <div class="mb-0">
+                            <label for="folderSelect" class="form-label fw-bold">
+                                <i class="bi bi-folder2-open"></i> 폴더 선택
+                            </label>
+                            <select class="form-select" id="folderSelect" disabled>
+                                <option value="">먼저 폴더를 조회하세요</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Drag & Drop Area -->
                 <div class="card shadow-sm border-0 mb-4">
                     <div class="card-body p-5">
@@ -81,10 +109,13 @@
                     </div>
                 </div>
 
-                <!-- Success/Error Messages -->
-                <div id="alertContainer"></div>
             </div>
         </div>
+    </div>
+
+    <!-- Toast Container (Fixed at bottom) -->
+    <div class="toast-container position-fixed bottom-0 start-50 translate-middle-x p-3" id="toastContainer">
+        <!-- Toast messages will be dynamically added here -->
     </div>
 
     <!-- Bootstrap JS -->

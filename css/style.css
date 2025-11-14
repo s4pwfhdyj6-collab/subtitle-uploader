@@ -263,3 +263,62 @@ body {
     border-width: 0.15em;
 }
 
+/* Toast Styles */
+.toast-container {
+    z-index: 9999;
+    max-width: 90%;
+    width: auto;
+}
+
+.toast {
+    min-width: 300px;
+    max-width: 500px;
+    border-radius: var(--border-radius);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+    border: none;
+}
+
+.toast.bg-success {
+    background: linear-gradient(135deg, #198754 0%, #20c997 100%) !important;
+}
+
+.toast.bg-danger {
+    background: linear-gradient(135deg, #dc3545 0%, #e35d6a 100%) !important;
+}
+
+.toast-body {
+    padding: 1rem 1.25rem;
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.toast .btn-close {
+    filter: brightness(0) invert(1);
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.toast.showing {
+    animation: slideUp 0.3s ease-out;
+}
+
+/* Responsive Toast */
+@media (max-width: 576px) {
+    .toast-container {
+        max-width: 95%;
+    }
+
+    .toast {
+        min-width: 250px;
+    }
+}
+
