@@ -48,6 +48,14 @@ class SubtitleUploader {
 			this.fetchFolders();
 		});
 
+		// API Key 입력 시 언어 코드 자동 로드 시도
+		this.apiKeyInput.addEventListener("blur", async () => {
+			const apiKey = this.apiKeyInput.value.trim();
+			if (apiKey && (!this.languageCodes || !this.languageListDatalist.children.length)) {
+				await this.loadLanguageCodes();
+			}
+		});
+
 		// 폴더 선택 변경 시 파일 선택 활성화
 		this.folderSelect.addEventListener("change", () => {
 			if (this.folderSelect.value) {
@@ -240,12 +248,15 @@ class SubtitleUploader {
 		this.languageListDatalist.innerHTML = "";
 		this.languageCodes.caption.language.forEach((lang) => {
 			const option = document.createElement("option");
-			option.value = `${lang.language} (${lang.code})`;
+			const displayValue = `${lang.language} (${lang.code})`;
+			option.value = displayValue;
+			option.textContent = displayValue;
 			option.setAttribute('data-lang-id', lang.langId);
 			option.setAttribute('data-code', lang.code);
 			option.setAttribute('data-language', lang.language);
 			this.languageListDatalist.appendChild(option);
 		});
+		console.log(`언어 코드 datalist에 ${this.languageListDatalist.children.length}개 옵션 추가됨`);
 	}
 
 	detectLanguageCode(fileName) {
@@ -414,7 +425,20 @@ class SubtitleUploader {
 		languageInput.type = "text";
 		languageInput.className = "form-control form-control-sm";
 		languageInput.setAttribute("list", "languageList");
+		languageInput.setAttribute("autocomplete", "list");
 		languageInput.placeholder = "언어 선택";
+		
+		// datalist가 비어있으면 언어 코드 로드 시도
+		if (!this.languageCodes || !this.languageListDatalist.children.length) {
+			const apiKey = this.apiKeyInput.value.trim();
+			if (apiKey) {
+				// 비동기로 언어 코드 로드 (await 없이 호출)
+				this.loadLanguageCodes().then(() => {
+					// 언어 코드 로드 완료 후 datalist 다시 확인
+					console.log("언어 코드 로드 완료 - datalist 항목 수:", this.languageListDatalist.children.length);
+				});
+			}
+		}
 
 		// 초기값 설정 - 언어 이름과 코드를 함께 표시
 		if (fileObj.languageName && fileObj.languageCode) {
@@ -728,10 +752,11 @@ class SubtitleUploader {
 		// Toast 컨테이너에 추가
 		this.toastContainer.insertAdjacentHTML("beforeend", toastHTML);
 
-		// Toast 인스턴스 생성 및 표시 (자동으로 닫히지 않도록 autohide: false 설정)
+		// Toast 인스턴스 생성 및 표시 (15초 후 자동으로 닫힘)
 		const toastElement = document.getElementById(toastId);
 		const toast = new bootstrap.Toast(toastElement, {
-			autohide: false, // 자동으로 닫히지 않음
+			autohide: true,
+			delay: 15000, // 15초 (15000 밀리초)
 		});
 		toast.show();
 

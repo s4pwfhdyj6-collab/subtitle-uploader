@@ -1,15 +1,15 @@
 /* Custom Styles for Subtitle Uploader */
 
 :root {
-    --primary-color: #0d6efd;
-    --success-color: #198754;
+    --primary-color: #00ff88;
+    --success-color: #00ff88;
     --danger-color: #dc3545;
     --border-radius: 12px;
     --transition: all 0.3s ease;
 }
 
 body {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(180deg, #DBF1E7 0%, #FFFFFF 100%);
     min-height: 100vh;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
@@ -20,7 +20,25 @@ body {
 
 /* Header Styles */
 .display-4 {
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+    text-shadow: none;
+    color: #000000 !important;
+}
+
+.display-4.text-primary {
+    color: #000000 !important;
+}
+
+.display-4.text-primary i {
+    color: #000000 !important;
+}
+
+.display-4 .title-green {
+    color: #000000 !important;
+}
+
+.text-muted {
+    color: #00AC91 !important;
+    font-weight: 500;
 }
 
 /* Drop Zone Styles */
@@ -40,15 +58,15 @@ body {
 
 .drop-zone:hover {
     border-color: var(--primary-color);
-    background: #e7f1ff;
+    background: rgba(0, 255, 136, 0.1);
     transform: translateY(-2px);
 }
 
 .drop-zone.drag-over {
     border-color: var(--primary-color);
-    background: #cfe2ff;
+    background: rgba(0, 255, 136, 0.15);
     transform: scale(1.02);
-    box-shadow: 0 10px 25px rgba(13, 110, 253, 0.2);
+    box-shadow: 0 10px 25px rgba(0, 255, 136, 0.3);
 }
 
 .drop-zone-content {
@@ -57,6 +75,7 @@ body {
 
 .drop-zone i {
     animation: float 3s ease-in-out infinite;
+    color: #00AEE6 !important;
 }
 
 @keyframes float {
@@ -83,6 +102,19 @@ body {
 .card-header {
     border-radius: 0 !important;
     font-weight: 600;
+}
+
+.card-header.bg-primary {
+    background: linear-gradient(90deg, #00AEE6 0%, #00AC92 100%) !important;
+}
+
+.card-header.bg-primary.text-white {
+    color: #ffffff !important;
+}
+
+.card-header.bg-primary .badge.bg-light {
+    background-color: rgba(255, 255, 255, 0.3) !important;
+    color: #ffffff !important;
 }
 
 /* File List Styles */
@@ -116,7 +148,19 @@ body {
 
 .file-icon {
     font-size: 1.5rem;
-    color: var(--primary-color);
+    color: #00AEE6;
+}
+
+.text-primary {
+    color: var(--primary-color) !important;
+}
+
+.drop-zone .text-primary {
+    color: #00AEE6 !important;
+}
+
+.bg-primary {
+    background-color: var(--primary-color) !important;
 }
 
 .file-details {
@@ -155,7 +199,7 @@ body {
 }
 
 .file-language input:focus {
-    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+    box-shadow: 0 0 0 0.2rem rgba(0, 255, 136, 0.25);
 }
 
 .file-actions {
@@ -193,13 +237,33 @@ body {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-.btn-success {
-    background: linear-gradient(135deg, #198754 0%, #20c997 100%);
+.btn-primary {
+    background: linear-gradient(90deg, #00AEE6 0%, #00AC92 100%);
     border: none;
+    color: #ffffff;
+    font-weight: 600;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(90deg, #0099cc 0%, #009980 100%);
+    color: #ffffff;
+}
+
+.btn-primary i,
+.btn-success i {
+    color: #ffffff !important;
+}
+
+.btn-success {
+    background: linear-gradient(90deg, #00AEE6 0%, #00AC92 100%);
+    border: none;
+    color: #ffffff;
+    font-weight: 600;
 }
 
 .btn-success:hover {
-    background: linear-gradient(135deg, #157347 0%, #1aa179 100%);
+    background: linear-gradient(90deg, #0099cc 0%, #009980 100%);
+    color: #ffffff;
 }
 
 /* Progress Bar Styles */
@@ -302,11 +366,11 @@ body {
 }
 
 .toast.bg-success {
-    background: linear-gradient(135deg, #198754 0%, #20c997 100%) !important;
+    background: #00AC92 !important;
 }
 
 .toast.bg-danger {
-    background: linear-gradient(135deg, #dc3545 0%, #e35d6a 100%) !important;
+    background: #dc3545 !important;
 }
 
 .toast-body {
