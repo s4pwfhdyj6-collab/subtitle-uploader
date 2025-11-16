@@ -409,3 +409,165 @@ body {
     }
 }
 
+/* File Status Styles */
+.file-status {
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+    margin-right: 16px;
+}
+
+.status-badge {
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    transition: var(--transition);
+    white-space: nowrap;
+}
+
+.status-badge:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.status-pending {
+    background-color: #e9ecef;
+    color: #6c757d;
+}
+
+.status-processing {
+    background-color: #fff3cd;
+    color: #856404;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+.status-success {
+    background-color: #d1e7dd;
+    color: #0f5132;
+}
+
+.status-error {
+    background-color: #f8d7da;
+    color: #842029;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+/* File Logs Styles */
+.file-logs-container {
+    margin-top: 12px;
+    border-top: 2px solid #e9ecef;
+    padding-top: 12px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 12px;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        max-height: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        max-height: 500px;
+        transform: translateY(0);
+    }
+}
+
+.file-logs-header {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.file-logs-content {
+    max-height: 300px;
+    overflow-y: auto;
+    font-size: 0.85rem;
+    font-family: 'Courier New', monospace;
+}
+
+.log-entry {
+    padding: 6px 0;
+    line-height: 1.6;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.log-entry:last-child {
+    border-bottom: none;
+}
+
+.log-time {
+    color: #6c757d;
+    margin-right: 8px;
+    font-weight: 600;
+}
+
+.log-message {
+    color: #212529;
+}
+
+.log-entry.log-info .log-message {
+    color: #0d6efd;
+}
+
+.log-entry.log-success .log-message {
+    color: #198754;
+}
+
+.log-entry.log-error .log-message {
+    color: #dc3545;
+    font-weight: 600;
+}
+
+/* Custom Scrollbar for Logs */
+.file-logs-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.file-logs-content::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 3px;
+}
+
+.file-logs-content::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 3px;
+}
+
+.file-logs-content::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Responsive Design for Status */
+@media (max-width: 768px) {
+    .file-status {
+        margin-left: 0;
+        margin-right: 0;
+        margin-top: 8px;
+        width: 100%;
+    }
+    
+    .file-logs-container {
+        margin-top: 8px;
+    }
+    
+    .file-logs-content {
+        max-height: 200px;
+    }
+}
+

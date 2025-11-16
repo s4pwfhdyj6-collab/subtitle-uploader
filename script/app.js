@@ -91,10 +91,10 @@ class SubtitleUploader {
 			this.handleFiles(e.dataTransfer.files);
 		});
 
-		// 업로드 버튼 클릭
-		this.uploadBtn.addEventListener("click", () => {
+		// 업로드 버튼 클릭 - onclick만 사용하여 중복 호출 방지
+		this.uploadBtn.onclick = () => {
 			this.uploadFiles();
-		});
+		};
 	}
 
 	getApiKey() {
@@ -354,11 +354,16 @@ class SubtitleUploader {
 				)
 			) {
 				const detectedLanguage = this.detectLanguageCode(file.name);
+				// 파일 고유 ID 생성 (파일명과 크기 조합)
+				const fileId = `${file.name}_${file.size}`;
 				this.files.push({
+					id: fileId,
 					file: file,
 					langId: detectedLanguage ? detectedLanguage.langId : null,
 					languageName: detectedLanguage ? detectedLanguage.language : '',
-					languageCode: detectedLanguage ? detectedLanguage.code : ''
+					languageCode: detectedLanguage ? detectedLanguage.code : '',
+					logs: [],
+					status: 'pending' // pending, processing, success, error
 				});
 			}
 		});
@@ -470,6 +475,24 @@ class SubtitleUploader {
 
 		languageInfo.appendChild(languageInput);
 
+		// 진행 상태 표시 컬럼
+		const statusInfo = document.createElement("div");
+		statusInfo.className = "file-status";
+
+		const statusBadge = document.createElement("span");
+		statusBadge.className = "status-badge";
+		const fileId = fileObj.id || `${fileObj.file.name}_${fileObj.file.size}`;
+		statusBadge.setAttribute("data-file-id", fileId);
+		this.updateStatusBadge(statusBadge, fileObj.status || 'pending');
+		
+		// 상태 배지 클릭 시 로그 표시/숨김
+		statusBadge.style.cursor = "pointer";
+		statusBadge.addEventListener("click", () => {
+			this.toggleLogs(li, fileId);
+		});
+
+		statusInfo.appendChild(statusBadge);
+
 		const fileActions = document.createElement("div");
 		fileActions.className = "file-actions";
 
@@ -484,8 +507,35 @@ class SubtitleUploader {
 		fileActions.appendChild(removeBtn);
 		fileItem.appendChild(fileInfo);
 		fileItem.appendChild(languageInfo);
+		fileItem.appendChild(statusInfo);
 		fileItem.appendChild(fileActions);
 		li.appendChild(fileItem);
+
+		// 로그 영역 (초기에는 숨김)
+		const logContainer = document.createElement("div");
+		logContainer.className = "file-logs-container";
+		logContainer.style.display = "none";
+		logContainer.setAttribute("data-file-id", fileId);
+		
+		const logHeader = document.createElement("div");
+		logHeader.className = "file-logs-header";
+		logHeader.textContent = "진행 로그";
+		
+		const logContent = document.createElement("div");
+		logContent.className = "file-logs-content";
+		logContent.setAttribute("data-file-id", fileId);
+		
+		// 기존 로그가 있다면 표시
+		if (fileObj.logs && fileObj.logs.length > 0) {
+			fileObj.logs.forEach(log => {
+				const logEntry = this.createLogEntry(log);
+				logContent.appendChild(logEntry);
+			});
+		}
+		
+		logContainer.appendChild(logHeader);
+		logContainer.appendChild(logContent);
+		li.appendChild(logContainer);
 
 		return li;
 	}
@@ -493,6 +543,112 @@ class SubtitleUploader {
 	removeFile(index) {
 		this.files.splice(index, 1);
 		this.updateFileList();
+	}
+
+	updateStatusBadge(badge, status) {
+		badge.className = "status-badge";
+		switch(status) {
+			case 'pending':
+				badge.className += " status-pending";
+				badge.textContent = "대기";
+				break;
+			case 'processing':
+				badge.className += " status-processing";
+				badge.textContent = "처리중";
+				break;
+			case 'success':
+				badge.className += " status-success";
+				badge.textContent = "완료";
+				break;
+			case 'error':
+				badge.className += " status-error";
+				badge.textContent = "실패";
+				break;
+			default:
+				badge.className += " status-pending";
+				badge.textContent = "대기";
+		}
+	}
+
+	addLog(fileIndex, message, type = 'info') {
+		if (!this.files[fileIndex]) return;
+		
+		const fileObj = this.files[fileIndex];
+		if (!fileObj.logs) {
+			fileObj.logs = [];
+		}
+		
+		const timestamp = new Date().toLocaleTimeString('ko-KR');
+		const logEntry = {
+			time: timestamp,
+			message: message,
+			type: type // info, success, error
+		};
+		
+		fileObj.logs.push(logEntry);
+		
+		// UI 업데이트 - fileId로 찾기
+		const fileId = fileObj.id || `${fileObj.file.name}_${fileObj.file.size}`;
+		const logContent = document.querySelector(`.file-logs-content[data-file-id="${fileId}"]`);
+		if (logContent) {
+			const logElement = this.createLogEntry(logEntry);
+			logContent.appendChild(logElement);
+			// 로그 컨테이너가 열려있다면 스크롤을 맨 아래로
+			const logContainer = logContent.parentElement;
+			if (logContainer && logContainer.style.display !== 'none') {
+				logContent.scrollTop = logContent.scrollHeight;
+			}
+		}
+	}
+
+	createLogEntry(log) {
+		const logEntry = document.createElement("div");
+		logEntry.className = `log-entry log-${log.type}`;
+		
+		const timeSpan = document.createElement("span");
+		timeSpan.className = "log-time";
+		timeSpan.textContent = `[${log.time}]`;
+		
+		const messageSpan = document.createElement("span");
+		messageSpan.className = "log-message";
+		messageSpan.textContent = log.message;
+		
+		logEntry.appendChild(timeSpan);
+		logEntry.appendChild(messageSpan);
+		
+		return logEntry;
+	}
+
+	toggleLogs(li, fileId) {
+		const logContainer = li.querySelector(`.file-logs-container[data-file-id="${fileId}"]`);
+		if (!logContainer) return;
+		
+		if (logContainer.style.display === 'none') {
+			logContainer.style.display = 'block';
+			// 로그가 열릴 때 스크롤을 맨 아래로
+			const logContent = logContainer.querySelector('.file-logs-content');
+			if (logContent) {
+				setTimeout(() => {
+					logContent.scrollTop = logContent.scrollHeight;
+				}, 100);
+			}
+		} else {
+			logContainer.style.display = 'none';
+		}
+	}
+
+	updateFileStatus(index, status) {
+		if (!this.files[index]) return;
+		
+		const fileObj = this.files[index];
+		fileObj.status = status;
+		
+		// UI 업데이트 - fileId로 찾기
+		const fileId = fileObj.id || `${fileObj.file.name}_${fileObj.file.size}`;
+		const badge = document.querySelector(`.status-badge[data-file-id="${fileId}"]`);
+		if (badge) {
+			this.updateStatusBadge(badge, status);
+		}
 	}
 
 	formatFileSize(bytes) {
@@ -545,6 +701,10 @@ class SubtitleUploader {
 				const fileObj = this.files[i];
 				const currentTitle = this.getFileTitle(fileObj.file.name);
 
+				// 파일 상태를 처리중으로 변경
+				this.updateFileStatus(i, 'processing');
+				this.addLog(i, "업로드 시작", 'info');
+
 				this.progressText.textContent = `${i + 1}/${this.files.length} - ${fileObj.file.name} 처리 중...`;
 
 				try {
@@ -558,26 +718,38 @@ class SubtitleUploader {
 					// 1. 이전 파일과 제목이 같으면 accessKey 재사용
 					if (currentTitle === previousTitle && previousAccessKey) {
 						accessKey = previousAccessKey;
+						this.addLog(i, `이전 파일과 같은 제목으로 accessKey 재사용: ${accessKey}`, 'info');
 					} else {
 						// 영상 검색
+						this.addLog(i, `영상 검색 중... (제목: ${currentTitle})`, 'info');
 						accessKey = await this.findVideoAccessKey(folderId, currentTitle, apiKey);
 						if (!accessKey) {
 							throw new Error("매칭되는 영상을 찾을 수 없습니다.");
 						}
+						this.addLog(i, `영상 검색 완료 (accessKey: ${accessKey})`, 'success');
 						previousTitle = currentTitle;
 						previousAccessKey = accessKey;
 					}
 
 					// 2. 업로드 토큰 획득
+					this.addLog(i, "업로드 토큰 획득 중...", 'info');
 					const uploadInfo = await this.getUploadToken(accessKey, apiKey);
+					this.addLog(i, "업로드 토큰 획득 완료", 'success');
 
 					// 3. 자막 파일 업로드
+					this.addLog(i, "자막 파일 업로드 중...", 'info');
 					await this.uploadCaption(uploadInfo, fileObj);
+					this.addLog(i, "자막 파일 업로드 완료", 'success');
 
+					// 성공 상태로 변경
+					this.updateFileStatus(i, 'success');
+					this.addLog(i, "업로드 성공", 'success');
 					successCount++;
 				} catch (error) {
 					failCount++;
 					errors.push(`${fileObj.file.name}: ${error.message}`);
+					this.updateFileStatus(i, 'error');
+					this.addLog(i, `오류: ${error.message}`, 'error');
 					console.error(`Upload failed for ${fileObj.file.name}:`, error);
 				}
 
@@ -601,48 +773,117 @@ class SubtitleUploader {
 				);
 			}
 
-			// 파일 목록 초기화
-			this.files = [];
-			this.updateFileList();
+			// 진행률 카드 숨김
 			this.progressCard.style.display = "none";
+			
+			// 업로드 버튼을 새로고침 버튼으로 변경
+			this.uploadBtn.disabled = false;
+			this.uploadBtn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> 새로고침';
+			this.uploadBtn.onclick = () => {
+				this.resetApplication();
+			};
 		} catch (error) {
 			this.showAlert(
 				`업로드 중 오류가 발생했습니다: ${error.message}`,
 				"danger"
 			);
-		} finally {
-			// 업로드 버튼 활성화
+			// 에러 발생 시에도 버튼 복구
 			this.uploadBtn.disabled = false;
-			this.uploadBtn.innerHTML =
-				'<i class="bi bi-upload"></i> 업로드 시작';
+			this.uploadBtn.innerHTML = '<i class="bi bi-upload"></i> 업로드 시작';
+			this.uploadBtn.onclick = () => {
+				this.uploadFiles();
+			};
 		}
+	}
+
+	resetApplication() {
+		// 파일 목록 초기화
+		this.files = [];
+		this.updateFileList();
+		this.progressCard.style.display = "none";
+		
+		// 업로드 버튼 복구
+		this.uploadBtn.innerHTML = '<i class="bi bi-upload"></i> 업로드 시작';
+		this.uploadBtn.onclick = () => {
+			this.uploadFiles();
+		};
 	}
 
 	// 영상 검색 및 가장 유사한 accessKey 찾기
 	async findVideoAccessKey(folderId, title, apiKey) {
-		const url = `https://api.v4.wecandeo.com/info/videopack/folder/v1/videos.json?folderId=${folderId}&searchItem=title&keyword=${encodeURIComponent(title)}`;
-
-		console.log('=== Find Video Request ===');
-		console.log('URL:', url);
-		console.log('folderId:', folderId);
-		console.log('title:', title);
+		// Postman과 동일한 인코딩을 위해 한글 문자를 UTF-8 바이트로 직접 변환
+		// JavaScript의 encodeURIComponent는 자모 분리형 한글을 생성하므로
+		// Postman과 다를 수 있음. 대신 각 문자를 UTF-8 바이트로 변환
+		function encodeForAPI(str) {
+			let result = '';
+			for (let i = 0; i < str.length; i++) {
+				const char = str.charAt(i);
+				const code = char.charCodeAt(0);
+				
+				// ASCII 문자는 그대로 인코딩
+				if (code < 0x80) {
+					result += encodeURIComponent(char);
+				} else {
+					// 한글 등 멀티바이트 문자는 UTF-8 바이트로 변환
+					// charCodeAt은 UTF-16 코드 포인트를 반환하므로
+					// UTF-8로 변환해야 함
+					if (code < 0x800) {
+						// 2바이트 UTF-8 문자
+						result += '%' + ((code >> 6) | 0xC0).toString(16).toUpperCase().padStart(2, '0');
+						result += '%' + ((code & 0x3F) | 0x80).toString(16).toUpperCase().padStart(2, '0');
+					} else if (code < 0xD800 || code >= 0xE000) {
+						// 3바이트 UTF-8 문자 (한글 포함)
+						result += '%' + ((code >> 12) | 0xE0).toString(16).toUpperCase().padStart(2, '0');
+						result += '%' + (((code >> 6) & 0x3F) | 0x80).toString(16).toUpperCase().padStart(2, '0');
+						result += '%' + ((code & 0x3F) | 0x80).toString(16).toUpperCase().padStart(2, '0');
+					} else {
+						// 서로게이트 페어 (4바이트 문자)
+						// 이 경우는 encodeURIComponent 사용
+						result += encodeURIComponent(char);
+					}
+				}
+			}
+			return result;
+		}
+		
+		// 문자열을 정규화 (NFC 형태로 유지)
+		const normalizedTitle = title.normalize('NFC');
+		const encodedKeyword = encodeForAPI(normalizedTitle);
+		
+		// Postman과 동일한 형식으로 URL 구성
+		const url = `https://api.v4.wecandeo.com/info/videopack/folder/v1/videos.json?folderId=${folderId}&searchItem=title&keyword=${encodedKeyword}`;
 
 		const response = await fetch(url, {
 			method: "GET",
 			headers: {
 				"x-api-key": apiKey,
 				"Content-Type": "application/json",
+				"Accept": "application/json",
 			},
 		});
 
 		if (!response.ok) {
-			throw new Error(`영상 검색 API 호출 실패: ${response.status}`);
+			const errorText = await response.text();
+			throw new Error(`영상 검색 API 호출 실패: ${response.status} - ${errorText}`);
 		}
 
 		const data = await response.json();
-		console.log('Video search response:', data);
+		
+		// 다양한 응답 구조 처리
+		let videoList = null;
+		if (data.videoInfoList && data.videoInfoList.folderVideoList) {
+			videoList = data.videoInfoList.folderVideoList;
+		} else if (data.folderVideoList) {
+			videoList = data.folderVideoList;
+		} else if (data.videos) {
+			videoList = data.videos;
+		} else if (data.videoList) {
+			videoList = data.videoList;
+		} else if (Array.isArray(data)) {
+			videoList = data;
+		}
 
-		if (!data.videoInfoList || !data.videoInfoList.folderVideoList || data.videoInfoList.folderVideoList.length === 0) {
+		if (!videoList || videoList.length === 0) {
 			return null;
 		}
 
@@ -650,15 +891,16 @@ class SubtitleUploader {
 		let bestMatch = null;
 		let bestSimilarity = 0;
 
-		data.videoInfoList.folderVideoList.forEach((video) => {
-			const similarity = this.calculateSimilarity(title, video.title);
+		videoList.forEach((video) => {
+			const videoTitle = video.title || video.name || '';
+			const similarity = this.calculateSimilarity(title, videoTitle);
 			if (similarity > bestSimilarity) {
 				bestSimilarity = similarity;
 				bestMatch = video;
 			}
 		});
 
-		return bestMatch ? bestMatch.accessKey : null;
+		return bestMatch ? (bestMatch.accessKey || bestMatch.access_key || bestMatch.id) : null;
 	}
 
 	// 업로드 토큰 획득
