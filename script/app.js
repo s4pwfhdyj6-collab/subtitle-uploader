@@ -332,15 +332,15 @@ class SubtitleUploader {
 
 	handleFiles(fileList) {
 		const newFiles = Array.from(fileList).filter((file) => {
-			// 자막 파일 확장자 확인
-			const validExtensions = [".srt", ".vtt", ".ass", ".ssa", ".txt"];
+			// 자막 파일 확장자 확인 (SRT, VTT만 지원)
+			const validExtensions = [".srt", ".vtt"];
 			const fileName = file.name.toLowerCase();
 			return validExtensions.some((ext) => fileName.endsWith(ext));
 		});
 
 		if (newFiles.length === 0) {
 			this.showAlert(
-				"지원하지 않는 파일 형식입니다. SRT, VTT, ASS, SSA, TXT 파일만 업로드 가능합니다.",
+				"지원하지 않는 파일 형식입니다. SRT, VTT 파일만 업로드 가능합니다.",
 				"danger"
 			);
 			return;
@@ -731,14 +731,30 @@ class SubtitleUploader {
 						previousAccessKey = accessKey;
 					}
 
-					// 2. 업로드 토큰 획득
+					// 2. SRT 파일인 경우 VTT로 변환
+					let fileToUpload = fileObj;
+					const fileName = fileObj.file.name.toLowerCase();
+					if (fileName.endsWith('.srt')) {
+						this.addLog(i, "SRT 파일을 VTT로 변환 중...", 'info');
+						const convertedFile = await this.convertSrtToVtt(fileObj.file, i);
+						if (!convertedFile) {
+							throw new Error("SRT 파일 변환에 실패했습니다.");
+						}
+						fileToUpload = {
+							...fileObj,
+							file: convertedFile
+						};
+						this.addLog(i, "SRT 파일 변환 완료", 'success');
+					}
+
+					// 3. 업로드 토큰 획득
 					this.addLog(i, "업로드 토큰 획득 중...", 'info');
 					const uploadInfo = await this.getUploadToken(accessKey, apiKey);
 					this.addLog(i, "업로드 토큰 획득 완료", 'success');
 
-					// 3. 자막 파일 업로드
+					// 4. 자막 파일 업로드
 					this.addLog(i, "자막 파일 업로드 중...", 'info');
-					await this.uploadCaption(uploadInfo, fileObj);
+					await this.uploadCaption(uploadInfo, fileToUpload);
 					this.addLog(i, "자막 파일 업로드 완료", 'success');
 
 					// 성공 상태로 변경
@@ -901,6 +917,56 @@ class SubtitleUploader {
 		});
 
 		return bestMatch ? (bestMatch.accessKey || bestMatch.access_key || bestMatch.id) : null;
+	}
+
+	// SRT 파일을 VTT로 변환
+	async convertSrtToVtt(srtFile, fileIndex) {
+		try {
+			// 1. SRT 파일을 변환 API에 업로드
+			const formData = new FormData();
+			formData.append('subtitle', srtFile);
+
+			this.addLog(fileIndex, `변환 API 호출 중... (${srtFile.name})`, 'info');
+			const convertResponse = await fetch('https://subtitletools.com/api/v1/convert-to-vtt', {
+				method: 'POST',
+				body: formData
+			});
+
+			if (!convertResponse.ok) {
+				const errorText = await convertResponse.text();
+				throw new Error(`변환 API 호출 실패 (${convertResponse.status}): ${errorText}`);
+			}
+
+			const convertData = await convertResponse.json();
+			
+			if (!convertData.download_url) {
+				throw new Error('변환 API에서 download_url을 받지 못했습니다.');
+			}
+
+			this.addLog(fileIndex, `변환 완료, VTT 파일 다운로드 중...`, 'info');
+
+			// 2. 변환된 VTT 파일 다운로드
+			const downloadResponse = await fetch(convertData.download_url);
+			
+			if (!downloadResponse.ok) {
+				throw new Error(`VTT 파일 다운로드 실패 (${downloadResponse.status})`);
+			}
+
+			const vttBlob = await downloadResponse.blob();
+			
+			// 3. 원본 파일명과 동일한 이름으로 .vtt 확장자를 가진 File 객체 생성
+			const originalName = srtFile.name.replace(/\.srt$/i, '.vtt');
+			const vttFile = new File([vttBlob], originalName, {
+				type: 'text/vtt',
+				lastModified: Date.now()
+			});
+
+			this.addLog(fileIndex, `VTT 파일 생성 완료 (${originalName})`, 'success');
+			return vttFile;
+		} catch (error) {
+			this.addLog(fileIndex, `SRT 변환 오류: ${error.message}`, 'error');
+			throw error;
+		}
 	}
 
 	// 업로드 토큰 획득
