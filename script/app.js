@@ -922,39 +922,102 @@ class SubtitleUploader {
 	// SRT 파일을 VTT로 변환
 	async convertSrtToVtt(srtFile, fileIndex) {
 		try {
-			// 1. SRT 파일을 변환 API에 업로드
-			const formData = new FormData();
-			formData.append('subtitle', srtFile);
+			// Transloadit API 설정
+			const TRANSLOADIT_AUTH_KEY = 'ff1c592d01d23cccfba0a9c81c329893';
+			const TRANSLOADIT_TEMPLATE_ID = '49f4050bdd57417ca84c57fbcfad0b22';
 
-			this.addLog(fileIndex, `변환 API 호출 중... (${srtFile.name})`, 'info');
-			const convertResponse = await fetch('https://subtitletools.com/api/v1/convert-to-vtt', {
+			// 1. 어셈블리 생성 및 파일 업로드
+			const formData = new FormData();
+			formData.append('params', JSON.stringify({
+				auth: { key: TRANSLOADIT_AUTH_KEY },
+				template_id: TRANSLOADIT_TEMPLATE_ID
+			}));
+			formData.append('file', srtFile);
+
+			this.addLog(fileIndex, `Transloadit API 호출 중... (${srtFile.name})`, 'info');
+			const assemblyResponse = await fetch('https://api2.transloadit.com/assemblies', {
 				method: 'POST',
 				body: formData
 			});
 
-			if (!convertResponse.ok) {
-				const errorText = await convertResponse.text();
-				throw new Error(`변환 API 호출 실패 (${convertResponse.status}): ${errorText}`);
+			if (!assemblyResponse.ok) {
+				const errorText = await assemblyResponse.text();
+				throw new Error(`어셈블리 생성 실패 (${assemblyResponse.status}): ${errorText}`);
 			}
 
-			const convertData = await convertResponse.json();
-			
-			if (!convertData.download_url) {
-				throw new Error('변환 API에서 download_url을 받지 못했습니다.');
+			const assemblyData = await assemblyResponse.json();
+
+			if (!assemblyData.ok || !assemblyData.assembly_id) {
+				throw new Error('어셈블리 ID를 받지 못했습니다.');
+			}
+
+			this.addLog(fileIndex, `변환 중... (Assembly ID: ${assemblyData.assembly_id})`, 'info');
+
+			// 2. 어셈블리 상태 폴링 (변환 완료 대기)
+			// assembly_ssl_url 사용하고, 동적 서브도메인을 api2.transloadit.com으로 교체
+			let assemblyUrl = assemblyData.assembly_ssl_url || assemblyData.assembly_url || `https://api2.transloadit.com/assemblies/${assemblyData.assembly_id}`;
+			// HTTP를 HTTPS로 강제 변환 및 동적 서브도메인을 api2.transloadit.com으로 교체
+			assemblyUrl = assemblyUrl.replace(/^http:/, 'https:').replace(/^https:\/\/api2\.[^.]+\.transloadit\.com/, 'https://api2.transloadit.com');
+
+			let statusData = assemblyData;
+			let attempts = 0;
+			const maxAttempts = 60; // 최대 60초 대기
+
+			while (attempts < maxAttempts) {
+				// ASSEMBLY_COMPLETED 상태 확인
+				if (statusData.ok === 'ASSEMBLY_COMPLETED') {
+					break;
+				}
+
+				// ASSEMBLY_EXECUTING 또는 다른 진행 중 상태인 경우 계속 대기
+				if (statusData.ok !== 'ASSEMBLY_EXECUTING' && statusData.ok !== 'ASSEMBLY_UPLOADING') {
+					throw new Error(`어셈블리 처리 실패: ${statusData.ok}`);
+				}
+
+				// 1초 대기 후 상태 확인
+				await new Promise(resolve => setTimeout(resolve, 1000));
+				attempts++;
+
+				const statusResponse = await fetch(assemblyUrl);
+				if (!statusResponse.ok) {
+					throw new Error(`상태 확인 실패 (${statusResponse.status})`);
+				}
+
+				statusData = await statusResponse.json();
+			}
+
+			if (statusData.ok !== 'ASSEMBLY_COMPLETED') {
+				throw new Error('변환 시간 초과');
 			}
 
 			this.addLog(fileIndex, `변환 완료, VTT 파일 다운로드 중...`, 'info');
 
-			// 2. 변환된 VTT 파일 다운로드
-			const downloadResponse = await fetch(convertData.download_url);
-			
+			// 3. 변환된 VTT 파일 다운로드
+			// results 객체에서 첫 번째 결과 파일 가져오기
+			const results = statusData.results;
+			if (!results || Object.keys(results).length === 0) {
+				throw new Error('변환 결과를 찾을 수 없습니다.');
+			}
+
+			// 첫 번째 스텝의 첫 번째 결과 파일 가져오기
+			const firstStepKey = Object.keys(results)[0];
+			const resultFiles = results[firstStepKey];
+
+			if (!resultFiles || resultFiles.length === 0) {
+				throw new Error('변환된 파일을 찾을 수 없습니다.');
+			}
+
+			const vttFileUrl = resultFiles[0].ssl_url || resultFiles[0].url;
+
+			const downloadResponse = await fetch(vttFileUrl);
+
 			if (!downloadResponse.ok) {
 				throw new Error(`VTT 파일 다운로드 실패 (${downloadResponse.status})`);
 			}
 
 			const vttBlob = await downloadResponse.blob();
-			
-			// 3. 원본 파일명과 동일한 이름으로 .vtt 확장자를 가진 File 객체 생성
+
+			// 4. 원본 파일명과 동일한 이름으로 .vtt 확장자를 가진 File 객체 생성
 			const originalName = srtFile.name.replace(/\.srt$/i, '.vtt');
 			const vttFile = new File([vttBlob], originalName, {
 				type: 'text/vtt',
