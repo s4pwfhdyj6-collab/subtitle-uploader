@@ -285,19 +285,12 @@ class SubtitleUploader {
 		const nameWithoutExt = fileName.replace(/\.[^/.]+$/, "");
 		const parts = nameWithoutExt.split("_");
 
-		// 마지막 부분이 언어 코드인지 확인
-		const lastPart = parts[parts.length - 1];
-		if (this.languageCodes && this.languageCodes.caption && this.languageCodes.caption.language) {
-			const isLanguageCode = this.languageCodes.caption.language.some(
-				(lang) => lang.code === lastPart
-			);
-			if (isLanguageCode) {
-				// 마지막 부분이 언어 코드면 제외
-				return parts.slice(0, -1).join("_");
-			}
+		// 마지막 부분을 항상 제외하고 반환
+		if (parts.length > 1) {
+			return parts.slice(0, -1).join("_");
 		}
 
-		// 언어 코드가 아니면 전체 반환
+		// 언더스코어가 없는 경우 전체 반환
 		return nameWithoutExt;
 	}
 
